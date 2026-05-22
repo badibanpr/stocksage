@@ -32,7 +32,7 @@ function fmtMCap(n: number | null) {
   return `$${(n / 1e6).toFixed(0)}M`;
 }
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export default async function StockPage({ params, searchParams }: Props) {
   const { ticker } = await params;
