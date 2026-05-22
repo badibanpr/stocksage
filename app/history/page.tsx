@@ -1,21 +1,11 @@
-import { supabase } from "@/lib/supabase";
-import type { DailyRun } from "@/lib/supabase";
+import { getCompletedRuns, getRunRecommendationSummary } from "@/lib/db";
+import type { DailyRun } from "@/lib/db";
 import Link from "next/link";
-
-async function getRuns(): Promise<DailyRun[]> {
-  const { data } = await supabase
-    .from("daily_runs")
-    .select("*")
-    .eq("status", "complete")
-    .order("run_date", { ascending: false })
-    .limit(30);
-  return data ?? [];
-}
 
 export const revalidate = 3600;
 
 export default async function HistoryPage() {
-  const runs = await getRuns();
+  const runs = await getCompletedRuns(30);
 
   return (
     <div className="space-y-8">
@@ -42,11 +32,7 @@ export default async function HistoryPage() {
 }
 
 async function HistoryRow({ run }: { run: DailyRun }) {
-  const { data: recs } = await supabase
-    .from("recommendations")
-    .select("ticker, signal, rank")
-    .eq("run_date", run.run_date)
-    .order("rank", { ascending: true });
+  const recs = await getRunRecommendationSummary(run.run_date);
 
   const formattedDate = new Date(run.run_date + "T12:00:00Z").toLocaleDateString("en-US", {
     weekday: "short",
@@ -65,7 +51,7 @@ async function HistoryRow({ run }: { run: DailyRun }) {
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {(recs ?? []).map((r) => (
+        {recs.map((r) => (
           <Link
             key={r.rank}
             href={`/stock/${r.ticker}?date=${run.run_date}`}
