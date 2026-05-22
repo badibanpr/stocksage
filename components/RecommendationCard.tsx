@@ -1,6 +1,6 @@
 "use client";
 
-import type { Recommendation } from "@/lib/supabase";
+import type { Recommendation } from "@/lib/db";
 import Link from "next/link";
 
 interface Props {
