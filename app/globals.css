@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --bg-base: #0a0e1a;
+  --bg-card: #111827;
+  --bg-card-hover: #1a2236;
+  --border: #1e2d45;
+  --text-primary: #e2e8f0;
+  --text-muted: #64748b;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --red: #ef4444;
+  --blue: #3b82f6;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@layer utilities {
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+  }
+  .card-hover {
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .card-hover:hover {
+    background: var(--bg-card-hover);
+    border-color: #2d4a6e;
+  }
+}
