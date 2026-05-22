@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
-import type { UserPrefs } from "@/lib/supabase";
 
-const options: { value: UserPrefs["risk_tolerance"]; label: string; description: string }[] = [
+const options: { value: string; label: string; description: string }[] = [
   {
     value: "conservative",
     label: "Conservative",
@@ -23,15 +21,17 @@ const options: { value: UserPrefs["risk_tolerance"]; label: string; description:
 ];
 
 export default function SettingsPage() {
-  const [selected, setSelected] = useState<UserPrefs["risk_tolerance"]>("moderate");
+  const [selected, setSelected] = useState("moderate");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   async function save() {
     setSaving(true);
-    await supabase
-      .from("user_prefs")
-      .upsert({ id: "singleton", risk_tolerance: selected });
+    await fetch("/api/prefs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ risk_tolerance: selected }),
+    });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
