@@ -14,7 +14,7 @@ async function getLatestRecommendations(): Promise<{
   return { recs, runDate: run.run_date };
 }
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const { recs, runDate } = await getLatestRecommendations();
