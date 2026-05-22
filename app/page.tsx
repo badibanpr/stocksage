@@ -1,32 +1,20 @@
 import RecommendationCard from "@/components/RecommendationCard";
 import DisclaimerBanner from "@/components/DisclaimerBanner";
-import type { Recommendation } from "@/lib/supabase";
-import { supabase } from "@/lib/supabase";
+import { getLatestCompletedRun, getRecommendationsByDate } from "@/lib/db";
+import type { Recommendation } from "@/lib/db";
+import { revalidatePath } from "next/cache";
 
 async function getLatestRecommendations(): Promise<{
   recs: Recommendation[];
   runDate: string | null;
 }> {
-  const { data: latestRun } = await supabase
-    .from("daily_runs")
-    .select("run_date")
-    .eq("status", "complete")
-    .order("run_date", { ascending: false })
-    .limit(1)
-    .single();
-
-  if (!latestRun) return { recs: [], runDate: null };
-
-  const { data } = await supabase
-    .from("recommendations")
-    .select("*")
-    .eq("run_date", latestRun.run_date)
-    .order("rank", { ascending: true });
-
-  return { recs: data ?? [], runDate: latestRun.run_date };
+  const run = await getLatestCompletedRun();
+  if (!run) return { recs: [], runDate: null };
+  const recs = await getRecommendationsByDate(run.run_date);
+  return { recs, runDate: run.run_date };
 }
 
-export const revalidate = 3600; // ISR — revalidate every hour
+export const revalidate = 3600;
 
 export default async function HomePage() {
   const { recs, runDate } = await getLatestRecommendations();
@@ -42,7 +30,6 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-white">Today&apos;s Top Picks</h1>
         {formattedDate && (
@@ -54,7 +41,6 @@ export default async function HomePage() {
 
       <DisclaimerBanner />
 
-      {/* Picks */}
       {recs.length > 0 ? (
         <div className="space-y-4">
           {recs.map((rec) => (
@@ -87,17 +73,9 @@ function RefreshButton() {
     <form
       action={async () => {
         "use server";
-        const { revalidatePath } = await import("next/cache");
         try {
           const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-          const res = await fetch(`${appUrl}/api/refresh`, {
-            method: "POST",
-            cache: "no-store",
-          });
-          if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            throw new Error(body.error ?? "Refresh failed");
-          }
+          await fetch(`${appUrl}/api/refresh`, { method: "POST", cache: "no-store" });
         } catch (err) {
           console.error("Refresh error:", err);
         }
