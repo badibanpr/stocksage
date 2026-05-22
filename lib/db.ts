@@ -1,6 +1,10 @@
 import { neon } from "@neondatabase/serverless";
 
-const sql = neon(process.env.DATABASE_URL ?? process.env.POSTGRES_URL ?? "");
+function getDb() {
+  const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+  if (!url) throw new Error("DATABASE_URL is not set");
+  return neon(url);
+}
 
 export type RiskScore = "Low" | "Medium" | "High";
 export type Signal = "Buy Now" | "Watch";
@@ -45,6 +49,7 @@ export interface UserPrefs {
 // ── Daily Runs ──────────────────────────────────────────────────────────────
 
 export async function createRun(runDate: string): Promise<DailyRun> {
+  const sql = getDb();
   const rows = await sql`
     INSERT INTO daily_runs (run_date, status)
     VALUES (${runDate}, 'running')
@@ -57,6 +62,7 @@ export async function updateRun(
   id: string,
   fields: Partial<Pick<DailyRun, "status" | "screened_count" | "finalist_count" | "error">>
 ): Promise<void> {
+  const sql = getDb();
   if (fields.screened_count !== undefined) {
     await sql`UPDATE daily_runs SET screened_count = ${fields.screened_count} WHERE id = ${id}`;
   }
@@ -71,6 +77,7 @@ export async function updateRun(
 }
 
 export async function getLatestCompletedRun(): Promise<DailyRun | null> {
+  const sql = getDb();
   const rows = await sql`
     SELECT * FROM daily_runs
     WHERE status = 'complete'
@@ -81,6 +88,7 @@ export async function getLatestCompletedRun(): Promise<DailyRun | null> {
 }
 
 export async function getCompletedRuns(limit = 30): Promise<DailyRun[]> {
+  const sql = getDb();
   const rows = await sql`
     SELECT * FROM daily_runs
     WHERE status = 'complete'
@@ -112,6 +120,7 @@ export interface InsertRecommendation {
 }
 
 export async function insertRecommendations(rows: InsertRecommendation[]): Promise<void> {
+  const sql = getDb();
   for (const r of rows) {
     await sql`
       INSERT INTO recommendations
@@ -128,6 +137,7 @@ export async function insertRecommendations(rows: InsertRecommendation[]): Promi
 }
 
 export async function getRecommendationsByDate(runDate: string): Promise<Recommendation[]> {
+  const sql = getDb();
   const rows = await sql`
     SELECT * FROM recommendations
     WHERE run_date = ${runDate}
@@ -140,6 +150,7 @@ export async function getRecommendationByTicker(
   ticker: string,
   runDate: string
 ): Promise<Recommendation | null> {
+  const sql = getDb();
   const rows = await sql`
     SELECT * FROM recommendations
     WHERE ticker = ${ticker} AND run_date = ${runDate}
@@ -151,6 +162,7 @@ export async function getRecommendationByTicker(
 export async function getRunRecommendationSummary(
   runDate: string
 ): Promise<Pick<Recommendation, "ticker" | "signal" | "rank">[]> {
+  const sql = getDb();
   const rows = await sql`
     SELECT ticker, signal, rank FROM recommendations
     WHERE run_date = ${runDate}
@@ -162,6 +174,7 @@ export async function getRunRecommendationSummary(
 // ── User Prefs ───────────────────────────────────────────────────────────────
 
 export async function getUserPrefs(): Promise<UserPrefs | null> {
+  const sql = getDb();
   const rows = await sql`SELECT * FROM user_prefs WHERE id = 'singleton' LIMIT 1`;
   return (rows[0] as UserPrefs) ?? null;
 }
@@ -169,6 +182,7 @@ export async function getUserPrefs(): Promise<UserPrefs | null> {
 export async function upsertUserPrefs(
   fields: Partial<Pick<UserPrefs, "risk_tolerance" | "last_manual_refresh">>
 ): Promise<void> {
+  const sql = getDb();
   if (fields.risk_tolerance !== undefined) {
     await sql`
       INSERT INTO user_prefs (id, risk_tolerance)
