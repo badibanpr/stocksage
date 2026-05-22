@@ -2,7 +2,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { EnrichedStock, MacroContext } from "./enricher";
-import type { Signal, RiskScore } from "./supabase";
+import type { Signal, RiskScore } from "./db";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
