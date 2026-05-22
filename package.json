@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",
-    "@supabase/supabase-js": "^2.49.4",
+    "@neondatabase/serverless": "^1.1.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lightweight-charts": "^5.0.7",
