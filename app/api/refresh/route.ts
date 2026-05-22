@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getUserPrefs, upsertUserPrefs } from "@/lib/db";
 
-// On-demand refresh — rate limited to 1 per hour per user
 export async function POST() {
-  const { data: prefs } = await supabase
-    .from("user_prefs")
-    .select("last_manual_refresh")
-    .limit(1)
-    .single();
+  const prefs = await getUserPrefs();
 
   if (prefs?.last_manual_refresh) {
     const lastRefresh = new Date(prefs.last_manual_refresh);
@@ -15,16 +10,12 @@ export async function POST() {
     if (lastRefresh > hourAgo) {
       const nextAllowed = new Date(lastRefresh.getTime() + 60 * 60 * 1000);
       return NextResponse.json(
-        {
-          error: "Rate limited",
-          nextAllowed: nextAllowed.toISOString(),
-        },
+        { error: "Rate limited", nextAllowed: nextAllowed.toISOString() },
         { status: 429 }
       );
     }
   }
 
-  // Trigger the cron endpoint internally
   const cronUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/daily-scan`;
   const res = await fetch(cronUrl, {
     headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
@@ -35,11 +26,6 @@ export async function POST() {
     return NextResponse.json({ error: body.error ?? "Scan failed" }, { status: 500 });
   }
 
-  // Update last refresh time
-  await supabase
-    .from("user_prefs")
-    .upsert({ id: "singleton", last_manual_refresh: new Date().toISOString() });
-
-  const result = await res.json();
-  return NextResponse.json(result);
+  await upsertUserPrefs({ last_manual_refresh: new Date().toISOString() });
+  return NextResponse.json(await res.json());
 }
