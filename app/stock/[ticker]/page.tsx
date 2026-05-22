@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase";
-import type { Recommendation } from "@/lib/supabase";
+import { getLatestCompletedRun, getRecommendationByTicker } from "@/lib/db";
+import type { Recommendation } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import DisclaimerBanner from "@/components/DisclaimerBanner";
@@ -38,30 +38,13 @@ export default async function StockPage({ params, searchParams }: Props) {
   const { ticker } = await params;
   const { date } = await searchParams;
 
-  let query = supabase
-    .from("recommendations")
-    .select("*")
-    .eq("ticker", ticker.toUpperCase());
+  const runDate = date ?? (await getLatestCompletedRun())?.run_date ?? null;
+  if (!runDate) return notFound();
 
-  if (date) {
-    query = query.eq("run_date", date);
-  } else {
-    // Get latest
-    const { data: latestRun } = await supabase
-      .from("daily_runs")
-      .select("run_date")
-      .eq("status", "complete")
-      .order("run_date", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (!latestRun) return notFound();
-    query = query.eq("run_date", latestRun.run_date);
-  }
-
-  const { data } = await query.single();
-  const rec: Recommendation | null = data;
-
+  const rec: Recommendation | null = await getRecommendationByTicker(
+    ticker.toUpperCase(),
+    runDate
+  );
   if (!rec) return notFound();
 
   const formattedDate = new Date(rec.run_date + "T12:00:00Z").toLocaleDateString("en-US", {
@@ -73,12 +56,10 @@ export default async function StockPage({ params, searchParams }: Props) {
 
   return (
     <div className="space-y-8 max-w-3xl">
-      {/* Back */}
       <Link href="/" className="text-sm text-[var(--text-muted)] hover:text-white transition-colors">
         ← Back to Today&apos;s Picks
       </Link>
 
-      {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-4 flex-wrap">
           <h1 className="text-4xl font-bold text-white">{rec.ticker}</h1>
@@ -99,7 +80,6 @@ export default async function StockPage({ params, searchParams }: Props) {
 
       <DisclaimerBanner />
 
-      {/* Key stats */}
       <div className="card p-6">
         <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-4">
           Key Metrics
@@ -112,7 +92,6 @@ export default async function StockPage({ params, searchParams }: Props) {
         </div>
       </div>
 
-      {/* Thesis */}
       <div className="card p-6 space-y-3">
         <h2 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wider">
           Investment Thesis
@@ -120,7 +99,6 @@ export default async function StockPage({ params, searchParams }: Props) {
         <p className="text-[var(--text-primary)] leading-relaxed">{rec.thesis}</p>
       </div>
 
-      {/* Catalyst */}
       {rec.catalyst && (
         <div className="card p-6 space-y-3">
           <h2 className="text-sm font-semibold text-[var(--blue)] uppercase tracking-wider">
@@ -130,11 +108,8 @@ export default async function StockPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      {/* Risk */}
       <div className="card p-6 space-y-3">
-        <h2
-          className={`text-sm font-semibold uppercase tracking-wider ${riskColors[rec.risk_score]}`}
-        >
+        <h2 className={`text-sm font-semibold uppercase tracking-wider ${riskColors[rec.risk_score]}`}>
           {rec.risk_score} Risk
         </h2>
         <p className="text-[var(--text-muted)]">{rec.risk_rationale}</p>
